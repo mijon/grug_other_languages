@@ -1,0 +1,817 @@
+---
+title: "What Other Languages Can Teach You About R"
+author: "Michael Jones"
+format: 
+  kakashi-revealjs:
+    css: styles.css
+    incremental: false
+    height: 800
+date: 15 January 2025
+self-contained: true
+---
+
+```{css echo=FALSE}
+.big-code{
+  font-size: 200%  
+}
+```
+
+## The Why
+
+- Different perspectives on same problem
+- Niche aspects of R might be key aspects of another language
+- It's Fun
+
+## The Why Not
+
+- Distraction?
+- Waste of time?
+- Grass is greener?
+
+## The obvious Choices
+
+- Python, Julia
+- C/C++
+
+## The Less Obvious Choices
+
+- **Haskell**: Functional, pure, abstraction, recursion 
+- **Lisp**: Code as data: Meta programming
+- **APL**: Array programming, data as single units, notation as a tool of thought
+
+But just a flavour today.
+
+# *Haskell*
+
+## Haskell: Overview
+
+Pure Functional (R is functional, but also multi-paradigm) 
+ 
+No loops
+
+Lazy (R is lazy really only in function arguments)
+
+Compiled, but has a REPL (R is interpreted)
+
+Strong Static Type System (R has a weaker dynamic type system)
+
+## Haskell Syntax
+
+Assignment(ish)
+
+```haskell
+x = 2
+```
+. . .
+
+Defining Functions
+
+```{.haskell code-line-numbers="|1|2|"}
+addNums :: Int -> Int -> Int
+addNums a b = a + b
+```
+
+. . .
+
+```{.haskell}
+safeDiv :: Int -> Int -> Float
+safeDiv _ 0 = 0
+safeDiv a b = x / y
+  where
+    x = fromIntegral a :: Float
+    y = fromIntegral b :: Float
+```
+
+## Haskell Syntax
+
+Calling Functions
+
+```haskell
+addNums 1 2
+```
+
+. . . 
+
+Calling functions with brackets:
+
+```haskell
+addNums 1 (addNums 2 3)
+addNums 1 $ addNums 2 3
+```
+
+. . .
+
+Composing Functions
+
+```haskell
+fun1 :: a -> b
+fun2 :: b -> c
+
+newfun :: a -> c
+newfun = fun2 . fun1
+```
+
+Equivalent to maths:
+
+$$
+g(f(x)) \equiv (g \circ f)(x)
+$$
+
+
+**Not a pipe**
+
+
+## Haskell vs R
+
+Count characters in several lines of text
+
+```{R}
+countChars <- function(s) {
+  s |>
+    stringr::str_split("\n") |>
+    purrr::map(stringr::str_length) |>
+    dplyr::first()
+}
+
+countChars("First Line\nSecond Line")
+```
+
+. . .
+
+```haskell
+countChars :: String -> [Int]
+countChars s = map length $ lines s
+
+countChars "First Line\nSecond Line"
+-- [10,11]
+```
+
+
+## More about type signatures
+
+```haskell
+countChars :: String -> [Int]
+```
+
+. . .
+
+Adding two numbers:
+
+```haskell
+addNumbers :: Num a => a -> a -> a
+addNumbers x y = x + y
+```
+
+## Closer look - Currying and Partial Application
+
+```haskell
+addNumbers :: Num =>  a ->  a  ->  a
+addNumbers :: Num =>  a -> (a  ->  a)
+```
+
+. . .
+
+Partial Application:
+
+```haskell
+:t addNumbers 5
+-- addNumbers 5 :: Num a => a -> a
+
+
+addFive = addNumbers 5
+```
+
+## Map
+
+Map is very common in Haskell
+
+```haskell
+:t map
+-- map :: (a -> b) -> [a] -> [b]
+```
+
+In R:
+
+```{r}
+purrr::map
+```
+
+## Map Partially Applied
+
+```haskell
+-- map :: (a -> b) -> [a] -> [b]
+-- (+) :: Num a => a -> a -> a
+-- (5 +) :: Num a => a -> a
+
+listAddFive = map (5 +)
+
+:t listAddFive
+-- listAddFive :: Num b => [b] -> [b]
+
+listAddFive [1,2,3]
+-- [6,7,8]
+```
+
+## Map Partially Applied
+
+```haskell
+:t map
+-- map :: (a -> b) -> [a] -> [b]
+
+:t length
+-- length :: Foldable t => t a -> Int
+```
+
+Partially apply map...
+
+```haskell
+lengths = map length
+
+lengths ["Hello", "GRUG"]
+-- [5, 4]
+```
+
+## Key Takeaway
+
+- Function Signatures clarify the function
+- Haskell type signatures for planning R Code?
+- Often you can tell exactly what the function can do from the signature alone
+
+```haskell
+map :: (a -> b) -> [a] -> [b]
+
+?? :: a -> a
+```
+
+## Product Types vs Sum Types
+
+- Collections, e.g. `a` & `b` & `c`: `(a, b, c)`. Number of elements is *product* of number of elements of parts
+- Either/Or e.g. `a` or `b`. Number of elements is *sum* of number of elements
+- Most languages have product types, sum types (aka "enums") are special
+
+```haskell
+data Bool = True | False
+```
+
+
+## Key Takeaway
+
+- The compiler checks certain things about types (e.g. consistency, handling all the cases of a sum type etc)
+- R doesn't have sum types and we're all the poorer for that
+
+
+
+## Defining New Types
+
+```haskell
+data Tree a = Node a (Tree a) (Tree a) | Leaf a
+  deriving (Show)
+
+mytree = Node 1 (Leaf 2) (Node 3 (Leaf 4) (Leaf 5))
+```
+
+```{dot}
+graph G {
+  1 -- 2;
+  1 -- 3;
+  3 -- 4;
+  3 -- 5;
+}
+```
+
+
+## Generalisation of Map
+
+- `map` to `fmap`
+- `List` to `Functor`
+
+```{.haskell}
+:t map
+map :: (a -> b) -> [a] -> [b]
+
+:t fmap
+fmap :: Functor f => (a -> b) -> f a -> f b
+```
+
+
+## Defining New Types
+
+```{.haskell}
+instance Functor Tree where
+  fmap f (Leaf a) = Leaf (f a)
+  fmap f (Node a l r) = Node (f a) (fmap f l) (fmap f r)
+  
+fmap (5 +) mytree
+```
+
+```{dot}
+graph G {
+  "5 + 1" -- "5 + 2";
+  "5 + 1" -- "5 + 3";
+  "5 + 3" -- "5 + 4";
+  "5 + 3" -- "5 + 5";
+}
+```
+
+## Key Takeaway
+
+- Layers of Abstraction lead to generalisable observations
+- *map on lists* becomes *fmap on functors*
+- Exercise: Try making a `Tree` data structure in R and making your own `fmap` for it. How easy is it to do?
+
+## Maybe
+
+- `Null`: the billion dollar mistake
+- All `Null`s are the same, so encode 'missingness' into the type system
+
+```{.haskell}
+data Maybe a = Nothing | Just a
+
+saferDiv :: Int -> Int -> Maybe Float
+saferDiv _ 0 = Nothing
+saferDiv x y = Just (a / b) where
+  a = fromIntegral x :: Float
+  b = fromIntegral y :: Float
+```
+
+## Groups
+
+
+A set equipped with a binary operator, $\cdot$
+
+*Closure*: $\forall x, y \in C, x \cdot y \in C$
+
+*Identity* A identity element, $e$, such that $\forall x \in C, e \cdot x = x \cdot e = x$
+
+*Associativity*: $\forall x, y, z \in C, x \cdot (y \cdot z) = (x \cdot y) \cdot z = x \cdot y \cdot z$
+
+*Inverse*: $\forall x \in C, \exists x^\prime : x \cdot x^\prime = x^\prime \cdot x = e$
+
+## <s>Groups</s> Monoids
+
+
+A set equipped with a binary operator, $\cdot$
+
+*Closure*: $\forall x, y \in C, x \cdot y \in C$
+
+*Identity* A identity element, $e$, such that $\forall x \in C, e \cdot x = x \cdot e = x$
+
+*Associativity*: $\forall x, y, z \in C, x \cdot (y \cdot z) = (x \cdot y) \cdot z = x \cdot y \cdot z$
+
+<s>*Inverse*: $\require{enclose}\enclose{horizontalstrike}{\forall x \in C, \exists x^\prime : x \cdot x^\prime = x^\prime \cdot x = e}$</s>
+
+
+## Monoids
+
+- "Squishable" or "Combinable"
+- e.g. Strings with string concatenations
+- R Vectors with `c()`
+- In Haskell, make an `mempty` element and `mappend` function, tell Haskell, and you're done.
+- Abstraction getting results
+
+## What's next
+
+- climb the ladder of abstraction: Functor, Applicative, Monad
+- read up on parsers
+- category theory?
+- take (pure) functional concepts and apply them to R code
+- [Learn You a Haskell for Great Good!](https://learnyouahaskell.com/) or [Hutton](https://people.cs.nott.ac.uk/pszgmh/pih.html)'s book
+
+## If not Haskel, then what?
+
+- Web: try Elm
+- not lazy with possibly better tooling: OCaml
+- Work on Windows all day: F# (a functional C# for .Net)
+- *Provable* computing: Idris
+
+# *Lisp*
+
+## Lisp Overview
+
+- A standard not a language (technically)
+- *very* different syntax
+- Everything is a list
+
+## Lisp Syntax
+
+Lists:
+
+```{.lisp}
+'(1 2 3 4)
+(list 1 2 3 4)
+```
+
+. . .
+
+Function calling
+
+```{.lisp}
+(list 1 2 3 4)
+```
+
+. . .
+
+Assignment
+
+```{.lisp}
+(defvar x (1 2 3))
+
+(setq x (1 2 3))
+(setq y 1 z (some-function 'symbol))
+```
+
+. . .
+
+Functional (map)
+
+```{.lisp}
+(mapcar #'evenp (list 1 2 3 4 5 6))
+;; (NIL T NIL T NIL T)
+```
+
+## Lisp Lists
+
+```{.lisp}
+(car '(1 2 3 4))
+;; 1
+
+
+(cdr '(1 2 3 4))
+;; (2 3 4)
+```
+
+- Lisp Lists are linked Lists
+- `car` : "contents of the address register"
+- `cdr` : "contents of the decrement register
+
+## Lisp Syntax
+
+Printing
+
+```{.lisp}
+(format t "hello")
+"hello"
+
+(format t "~r" 1234)
+"one thousand two hundred and thirty-four"
+
+(format t "~@r" 1234)
+"MCCXXXIV"
+```
+
+## Lisp Functions
+
+Define a function with `defun`:
+
+```{.lisp}
+(defun my-function (x y)
+  (cond ((< x y) (print "x is smaller"))
+        ((> x y) (print "y is smaller"))
+        (t (print "they are the same"))))
+        
+(my-function 1 2)
+```
+
+## Quote
+
+```{.lisp}
+(+ 1 2)
+;; 3
+
+(quote (+ 1 2))
+;; (+ 1 2)
+
+(eval (quote (+ 1 2)))
+;; 3
+```
+
+. . .
+
+code is data
+
+data is code
+
+code can operate on data
+
+so code can operate on code
+
+## Back Quote
+
+```{.lisp}
+(defvar x 10)
+(quote (+ 1 x))
+;; (+ 1 x)
+
+'(+ 1 x)
+;; (+ 1 x)
+
+`(+ 1 x)
+;; (+ 1 x)
+
+`(+ 1 ,x)
+;; (+ 1 10)
+```
+
+## Quoting in R
+
+```{r}
+bquote(x + 1)
+
+x <- 10
+bquote(.(x) + 1)
+
+eval(bquote(.(x) + 1))
+
+substitute(x + y, list(y = 10))
+```
+
+
+## Macros in R?
+
+```{r}
+macro_example <- function(x) {
+  x2 <- substitute(x)
+  bquote(
+    if (.(x2) > 2) {
+      1
+    } else {
+      2
+    }
+  )
+}
+
+macro_example(y^2)
+```
+
+## Key Takeaway
+
+- If you want to really understand R's metaprogramming, some Lisp is useful
+
+
+
+## What's next
+
+- Best way is to get SBCL and set up a repl and play
+- emacs + SLIME
+
+## If not (this) Lisp, then what?
+
+- Simple and neat: Scheme (grandfather of R...) (also the [wizard book](https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/index.html))
+- The complex beast: Common Lisp, e.g. [Practical Common Lisp](https://gigamonkeys.com/book/)
+- Customise your editor: emacs and emacsLisp
+
+
+# *APL*
+
+## APL Overview
+
+- Originally thought up as an alternative mathematics notation
+- Acts on blocks of data: "Arrays"
+- Terse but very interesting
+- "Rank Polymorphism"
+- Fun
+
+## APL Syntax
+
+Single glpyh primitives:
+
+::: {.incremental}
+- maths: `+-×÷`
+- assignment: `←`
+- sort: `⍋⍒` (technically "grade")
+- Array transpose: `⌽⊖⍉`
+- Comments: `⍝`
+:::
+
+
+## APL Synax
+
+- Start right, go left
+- There is no ambiguity in order of operations
+- Watch out for forks (more later)
+- Glyphs can either have one argument or two 
+
+## APL Glyphs
+
+<div class=big-code>
+```{.apl}
+←+-×÷*⍟⌹○!?|⌈⌊⊥⊤⊣⊢
+=≠≤<>≥≡≢∨∧⍲⍱↑↓⊂⊃⊆⌷
+⍋⍒⍳⍸∊⍷∪∩~/\⌿⍀,⍪⍴⌽⊖
+⍉¨⍨⍣.∘⍤⍥@⎕⍠⌸⌺⌶⍎⍕⋄⍝
+→⍵⍺∇¯⍬
+```
+</div>
+
+
+## Rank Polymorphism
+
+R: adding vectors
+
+```{r}
+c(1, 2, 3) + c(4, 5, 6)
+```
+
+APL:
+
+```{.apl}
+1 2 3 + 4 5 6
+⍝ 5 7 9
+
+```
+
+## Some Examples
+
+Assign a variable
+
+```{.apl}
+s ← 'racecar'
+```
+
+. . .
+Is this a palindrome?
+
+```{.apl}
+(⌽≡⊢) s
+⍝ 1
+```
+
+or
+```{.apl}
+(⌽≡⊢) 'not a palindrome'
+⍝ 0
+```
+
+## Explanation
+
+- `⌽` : reverse
+- `≡` : match
+- `⊢` : right (aka "right tack")
+
+"is this array the same as its reverse?"
+
+## Another Example
+
+```{.apl}
+      (⍳ 5) (∘.×) (⍳ 5)
+1  2  3  4  5
+2  4  6  8 10
+3  6  9 12 15
+4  8 12 16 20
+5 10 15 20 25
+```
+
+`∘.`, "jot dot" is outer product
+
+`⍳ 5` is the array 1 to 5 (in R, `1:5`)
+
+. . . 
+
+Easy to make whatever "multiplication" table you want
+
+```{.apl}
+(⍳ 5) (∘.+) (⍳ 5)
+2 3 4 5  6
+3 4 5 6  7
+4 5 6 7  8
+5 6 7 8  9
+6 7 8 9 10
+```
+
+
+## Functions
+
+1. "Tradfns"
+2. "Dfns"
+3. Tacit functions
+
+## Dfns
+
+- Up to two arguments
+- Left `⍺` and right `⍵`
+- Take a body in `{}` that can refer to `⍺` and `⍵`
+- Are called like `⍺{...}⍵`
+
+## Dfn Example
+
+> Santa is trying to deliver presents in a large apartment building, but he can't find the right floor - the directions he got are a little confusing. He starts on the ground floor (floor 0) and then follows the instructions one character at a time.
+>
+> An opening parenthesis, (, means he should go up one floor, and a closing parenthesis, ), means he should go down one floor.
+
+Advent of Code, 2015, day 1, part 1
+
+## Dfn Example
+
+`(` = up a floor, `)` = down a floor
+
+. . . 
+
+"A running sum counting the floor, incrementing at each '(', decrementing at each ')'"
+
+. . .
+
+```{.apl}
+{')'=⍵}  '(()(()('
+0 0 1 0 0 1 0
+```
+
+. . .
+
+```{.apl}
+{ ¯1*')'=⍵}  '(()(()('
+1 1 ¯1 1 1 ¯1 1
+```
+
+. . .
+
+```{.apl}
+{+⌿¯1*')'=⍵}  '(()(()('
+3
+```
+
+. . .
+
+Roughly equivalent to:
+
+```{r}
+x <- strsplit("(()(()(", "")[[1]]
+purrr::reduce((-1)^as.numeric(x == ")"), `+`)
+```
+
+
+## Tacit
+
+Functions without arguments
+
+AKA "Point Free"
+
+```{.apl}
+{+⌿¯1*')'=⍵}
+```
+
+becomes
+
+```{.apl}
++⌿¯1*')'=⊢
+```
+
+And "calling" this becomes:
+
+```{.apl}
+(+⌿¯1*')'=⊢) '(()(()('
+```
+
+## Forks
+
+<div class="big-code">
+```{.apl}
++⌿¯1*')'=⊢
+
+  ┌─┴──┐      
+  ⌿ ┌──┼───┐  
+┌─┘ ¯1 * ┌─┼─┐
++        ) = ⊢
+```
+</div>
+
+## Forks
+
+`⍺ (f g h) ⍵` is the same as `(⍺ f ⍵) g (⍺ h ⍵)`
+
+`f`, `g`, and `h` are dyadic functions.
+
+. . .
+
+```{.apl}
+(⌽≡⊢) s
+⍝ 1
+
+(⌽s)≡(⊢s)
+```
+
+## Key Takeaway
+
+- Composition of functions/computation
+- Combinators 
+
+
+## What's Next 
+
+- More on combinators: [To Mock a Mockingbird](https://en.wikipedia.org/wiki/To_Mock_a_Mockingbird)
+- [The Array Cast](https://www.arraycast.com/) podcast
+- [Try APL online](https://tryapl.org/)
+
+
+## If not APL, then what?
+
+- More modern: BQN
+- Also like stacks: Uiua
+- Honorable Mentions: J, K, ....
+
+# Summary
+
+## Summary
+
+- All Programming Languages bring something interesting to the table ~~(except VBA)~~
+- Learning more than 1 can enrich your understanding of both your main one and computers in general
+- (I think) these three languages in particular are fascinating and all three influence how I think about R
